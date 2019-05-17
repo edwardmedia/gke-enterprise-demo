@@ -21,23 +21,24 @@ variable "project" {
 
 // Optional variables
 variable "region_cloud" {
-  default = "us-west1"
+  default = "us-central1"
 }
 
 variable "region_on_prem" {
-  default = "us-west1"
+  default = "us-central1"
 }
 
 variable "zone_on_prem" {
-  default = "us-west1-a"
+  default = "us-central1-a"
 }
 
 variable "zone_on_prem_failover" {
-  default = ["us-west1-b", "us-west1-c"]
+  type    = "list"
+  default = ["us-central1-b", "us-central1-c"]
 }
 
 variable "zone_cloud" {
-  default = "us-west1-b"
+  default = "us-central1-a"
 }
 
 variable "cloud" {
@@ -60,10 +61,16 @@ variable "on_prem" {
     primary_range     = "10.2.0.0/17"
     secondary_range   = "10.2.128.0/17"
     destination_range = "10.1.0.0/16"
-    machine_type      = "n1-standard-2"
+    machine_type      = "n1-standard-4"
   }
 }
 
 variable "gke_master_version" {
   default = "latest"
+}
+
+// this map should be set should more labels be required to identify the container clusters and node groups
+variable "labels" {
+  type    = "map"
+  default = {}
 }

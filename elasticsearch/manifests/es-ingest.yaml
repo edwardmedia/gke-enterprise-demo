@@ -12,29 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# StatefulSet for ElasticSearch data
-# See https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
-  name: es-data
+  name: es-ingest
   labels:
     component: elasticsearch
-    role: data
+    role: ingest
 spec:
+  replicas: 2
   selector:
     matchLabels:
       component: elasticsearch
-      role: data
-  serviceName: elasticsearch-data
-  replicas: 3
+      role: ingest
   template:
     metadata:
       labels:
         component: elasticsearch
-        role: data
+        role: ingest
     spec:
-      serviceAccountName: elasticsearch-data
       # see https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
       initContainers:
       - name: init-sysctl
@@ -45,24 +41,8 @@ spec:
         - vm.max_map_count=262144
         securityContext:
           privileged: true
-      # This is using pod anti-affinity to ensure that the scheduler requires that pods are spread across all nodes.
-      # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: component
-                operator: In
-                values:
-                  - elasticsearch
-              - key: role
-                operator: In
-                values:
-                - data
-            topologyKey: kubernetes.io/hostname
       containers:
-      - name: es-data
+      - name: es-ingest
         image: docker.elastic.co/elasticsearch/elasticsearch:6.5.4
         # The configuration settings for Elasticsearch docker containers can be set via environment variables.
         # For more information see:
@@ -71,7 +51,7 @@ spec:
         env:
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/jvm-options.html
         - name: ES_JAVA_OPTS
-          value: -Xms1536m -Xmx1536m
+          value: -Xms256m -Xmx256m
         - name: NAMESPACE
           valueFrom:
             fieldRef:
@@ -79,6 +59,9 @@ spec:
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster.name.html
         - name: cluster.name
           value: myesdb
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/discovery-settings.html#minimum_master_nodes
+        - name: discovery.zen.minimum_master_nodes
+          value: "1"
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/discovery-settings.html#unicast.hosts
         - name: discovery.zen.ping.unicast.hosts
           value: elasticsearch-discovery
@@ -91,11 +74,17 @@ spec:
         # https://www.elastic.co/guide/en/elasticsearch/reference/6.5/modules-http.html#_settings_2
         - name: http.cors.allow-origin
           value: "*"
-        # https://www.elastic.co/guide/en/elasticsearch/reference/6.5/modules-node.html#master-node
-        - name: node.master
-          value: "false"
+        # https://www.elastic.co/guide/en/elasticsearch/reference/6.5/network.host.html
+        - name: network.host
+          value: _site_
         # https://www.elastic.co/guide/en/elasticsearch/reference/6.5/modules-node.html#ingest-node
         - name: node.ingest
+          value: "true"
+        # https://www.elastic.co/guide/en/elasticsearch/reference/6.5/modules-node.html#data-node
+        - name: node.data
+          value: "false"
+        # https://www.elastic.co/guide/en/elasticsearch/reference/6.5/modules-node.html#master-node
+        - name: node.master
           value: "false"
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/node.name.html
         - name: node.name
@@ -108,20 +97,19 @@ spec:
             resourceFieldRef:
               resource: limits.cpu
         resources:
+          requests:
+            cpu: "250m"
           limits:
             cpu: "1000m"
-          requests:
-            cpu: "25m"
-            memory: "1536Mi"
         ports:
-        - containerPort: 9300
-          name: transport
         - containerPort: 9200
           name: http
+        - containerPort: 9300
+          name: transport
         livenessProbe:
           tcpSocket:
             port: transport
-          initialDelaySeconds: 20
+          initialDelaySeconds: 60
           periodSeconds: 10
         readinessProbe:
           httpGet:
@@ -132,23 +120,23 @@ spec:
         volumeMounts:
         - name: storage
           mountPath: /data
-        - name: config
-          mountPath: /pre-stop-hook.sh
-          subPath: pre-stop-hook.sh
-        lifecycle:
-          preStop:
-            exec:
-              command: ["/bin/bash","/pre-stop-hook.sh"]
+      # This is using pod anti-affinity to ensure that the scheduler requires that pods are spread across all nodes.
+      # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: component
+                operator: In
+                values:
+                    - elasticsearch
+              - key: role
+                operator: In
+                values:
+                - ingest
+            topologyKey: kubernetes.io/hostname
       volumes:
-      - name: config
-        configMap:
-          name: es-cm
-  volumeClaimTemplates:
-    - metadata:
-        name: storage
-      spec:
-        storageClassName: repd-fast
-        accessModes: [ ReadWriteOnce ]
-        resources:
-          requests:
-            storage: "12Gi"
+          - emptyDir:
+              medium: ""
+            name: storage

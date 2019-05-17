@@ -43,7 +43,8 @@ PROJECT=$(gcloud config get-value core/project)
 
 # tear down cloud GKE objects, i.e. pyrios deployment, service and configmap
 "$PROJECT_ROOT"/scripts/cloud-destroy.sh || true
-# tear dwon on prem GKE objects, i.e. the Elasticsearch cluster
+# tear down on prem GKE objects, i.e. the Elasticsearch cluster
+
 "$PROJECT_ROOT"/scripts/on-prem-destroy.sh || true
 # bq is the 'big query' utility build into the GCP SDK.
 # Here we use it to remove all the log tables from the BQ dataset
@@ -52,8 +53,8 @@ PROJECT=$(gcloud config get-value core/project)
 # todo: this seems to get hung up if the log sink export isn't deleted yet.
 # we need to be able to robustly delete all resources
 
-bq --headless rm -rf staging_gke_elasticsearch_log_dataset || true
+bq rm -r -f "${PROJECT}":staging_gke_elasticsearch_log_dataset
 # destroy the rest of GCP infrastructure via Terraform
 # such as GKE clusters,
 
-terraform destroy -var project="$PROJECT" -auto-approve terraform/
+terraform destroy -var project="$PROJECT" -input=false -auto-approve terraform/

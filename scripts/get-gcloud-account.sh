@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,23 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# Service for elasticsearch master discovery
-# https://kubernetes.io/docs/concepts/services-networking/service/
-#
-apiVersion: v1
-kind: Service
-metadata:
-  name: elasticsearch-discovery
-  labels:
-    component: elasticsearch
-    role: master
-spec:
-  selector:
-    component: elasticsearch
-    role: master
-  ports:
-  - name: transport
-    port: 9300
-    protocol: TCP
-  clusterIP: None
+## This script is used exclusively by terraform to determine the account currently logged in
+## This script is called using the external provider from Terraform
+## Because a label can only have 63 bytes, truncate accordingly
+
+set -e
+gcloud_account=$(gcloud config get-value core/account | sed -e 's/[^-_[:alnum:]]/_/g' | cut -b -63 )
+
+## Terraform external provider requires that the output of the script to be a valid JSON string
+jq -n --arg name $gcloud_account '{"gcloud_account": $name}'

@@ -55,6 +55,18 @@ spec:
        // set env variable GOOGLE_APPLICATION_CREDENTIALS for Terraform
        env.GOOGLE_APPLICATION_CREDENTIALS=GOOGLE_APPLICATION_CREDENTIALS
 
+       stage('Setup') {
+         container(containerName) {
+           // Setup gcloud service account access
+           sh "gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}"
+           sh "gcloud config set compute/zone ${env.ZONE}"
+           sh "gcloud config set core/project ${env.PROJECT_ID}"
+           sh "gcloud config set compute/region ${env.REGION}"
+
+           sh 'echo "credential_file=${GOOGLE_APPLICATION_CREDENTIALS}" > /home/jenkins/.bigqueryrc'
+         }
+       }
+
        stage('Linting') {
          container(containerName) {
            // checkout the source code
@@ -66,22 +78,8 @@ spec:
          }
        }
 
-       stage('Setup') {
-         container(containerName) {
-           // Setup gcloud service account access
-           sh "gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}"
-           sh "gcloud config set compute/zone ${env.ZONE}"
-           sh "gcloud config set core/project ${env.PROJECT_ID}"
-           sh "gcloud config set compute/region ${env.REGION}"
-         }
-       }
-
        stage('Terraform') {
          container(containerName) {
-           script {
-             // you can set Terraform variables via environment variables
-             env.TF_VAR_shared_secret = "cicd"
-           }
            // This will run terraform init and terraform apply
            sh "make terraform"
          }

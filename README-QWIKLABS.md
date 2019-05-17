@@ -5,13 +5,7 @@
      * [RBAC Setup](#rbac-setup)
      * [Build and Push Pyrios Docker Image](#build-and-push-pyrios-docker-image)
      * [Elasticsearch Cluster HA Set Up With Regional Persistent Disks](#elasticsearch-cluster-ha-set-up-with-regional-persistent-disks)
-  * [Prerequisites](#prerequisites)
-     * [Run Demo in a Google Cloud Shell](#run-demo-in-a-google-cloud-shell)
-     * [Tools](#tools)
-        * [Install Cloud SDK](#install-cloud-sdk)
-        * [Install kubectl CLI](#install-kubectl-cli)
-        * [Install Terraform](#install-terraform)
-     * [Configure gcloud](#configure-gcloud)
+  * [Configure gcloud](#configure-gcloud)
   * [Enable the GCP Services](#enable-the-gcp-services)
   * [Run Terraform for Infrastructure Provisioning](#run-terraform-for-infrastructure-provisioning)
   * [Configure](#configure)
@@ -132,81 +126,27 @@ says 'region'.
 Execute:
 
 ```console
-gcloud beta compute disks list --filter="region:us-west1"
+gcloud beta compute disks list --filter="region:us-central1"
 ```
 
 Example output:
 
 ```console
 NAME                                                             LOCATION     LOCATION_SCOPE  SIZE_GB  TYPE         STATUS
-gke-on-prem-cluster-f1-pvc-9cf7b9b3-6472-11e8-a9b6-42010a800140  us-west1  region          13       pd-standard  READY
-gke-on-prem-cluster-f1-pvc-b169f561-6472-11e8-a9b6-42010a800140  us-west1  region          13       pd-standard  READY
-gke-on-prem-cluster-f1-pvc-bcc115d6-6472-11e8-a9b6-42010a800140  us-west1  region          13       pd-standard  READY
+gke-on-prem-cluster-f1-pvc-9cf7b9b3-6472-11e8-a9b6-42010a800140  us-central1  region          13       pd-standard  READY
+gke-on-prem-cluster-f1-pvc-b169f561-6472-11e8-a9b6-42010a800140  us-central1  region          13       pd-standard  READY
+gke-on-prem-cluster-f1-pvc-bcc115d6-6472-11e8-a9b6-42010a800140  us-central1  region          13       pd-standard  READY
 ```
 
-## Prerequisites
-
-### Run Demo in a Google Cloud Shell
-
-Click the button below to run the demo in a [Google Cloud Shell](https://cloud.google.com/shell/docs/).
-
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/GoogleCloudPlatform/gke-enterprise-demo.git&amp;cloudshell_image=gcr.io/graphite-cloud-shell-images/terraform:latest&amp;cloudshell_tutorial=README.md)
+At the beginning of the lab though, there should be no pre-existing disks found.
 
 
-All the tools for the demo are installed. When using Cloud Shell execute the following
-command in order to setup gcloud cli. When executing this command please setup your region
-and zone.
+## Configure gcloud
+
+When using Cloud Shell execute the following command in order to setup gcloud cli. When executing this command please setup your region and zone for the project.
 
 ```console
 gcloud init
-```
-
-### Tools
-
-1. [Terraform >= 0.11.7](https://www.terraform.io/downloads.html)
-2. [Google Cloud SDK version >= 204.0.0](https://cloud.google.com/sdk/docs/downloads-versioned-archives)
-3. [kubectl matching the latest GKE version](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-4. bash or bash compatible shell
-5. [jq](http://stedolan.github.io/jq/download/)
-6. [bazel](https://docs.bazel.build/versions/master/install.html)
-7. A Google Cloud Platform project where you have permission to create
-   networks
-
-This demo has been tested with macOS and Cloud Shell.
-
-You can obtain a [free trial of GCP](https://cloud.google.com/free/) if you need one
-
-#### Install Cloud SDK
-
-The Google Cloud SDK is used to interact with your GCP resources.
-[Installation instructions](https://cloud.google.com/sdk/downloads) for multiple platforms are available online.
-
-#### Install kubectl CLI
-
-The kubectl CLI is used to interteract with both Kubernetes Engine and kubernetes in general.
-[Installation instructions](https://cloud.google.com/kubernetes-engine/docs/quickstart)
-for multiple platforms are available online.
-
-#### Install Terraform
-
-Terraform is used to automate the manipulation of cloud infrastructure. Its
-[installation instructions](https://www.terraform.io/intro/getting-started/install.html) are also available online.
-
-#### Install jq
-
-jq is used for parsing JSON output from resources within this demo.  Its [installation instructions](http://stedolan.github.io/jq/download/) are available online.
-
-#### Install Bazel
-
-Bazel is the build tool used to build the pyrios images used in the demo. Its [installation instructions](https://docs.bazel.build/versions/master/install.html) are available online. At time of writing, the latest Bazel version tested is 0.24.0.
-
-### Configure gcloud
-
-Before running any commands, configure gcloud with the project you wish
-to use for this demo:
-
-```console
-gcloud config set project <PROJECT_ID>
 ```
 
 ## Enable the GCP Services
@@ -265,7 +205,6 @@ Initializing modules...
   Getting source "modules/datacenter"
 - module.on-prem
   Getting source "modules/datacenter"
-```
 
 Initializing provider plugins...
 - Checking for available provider plugins on https://releases.hashicorp.com...
@@ -308,18 +247,8 @@ kubeconfig entry generated for cloud-cluster.
 
 ## Deploy Kubernetes Resources
 
-To invokes the scripts to create all Kubernetes objects, run
-
-```console
-make create
-```
-
-During the creation of Kubernetes objects, a Bazel build will be triggered and new images will be created and published.
-
-To avoid authentication error please run
-```console
-gcloud auth configure-docker
-```
+Run `make create`, which invokes the scripts to create all
+Kubernetes objects.
 
 You should see output similar to this:
 ```
@@ -372,17 +301,14 @@ Loading data into the Elasticsearch cluster
 
 ## Validation
 
-To validate the Elasticsearch cluster by invoking its
-REST API, run
+Run `make validate` validates the Elasticsearch cluster by invoking its
+REST API. The scripts checks cluster version, health, sample data as well as a
+couple of types of queries (called query DSL in Elasticsearch term)
+on the sample data.
 
 ```console
 make validate
 ```
-
-The scripts checks cluster version, health, sample data as well as a
-couple of types of queries (called query DSL in Elasticsearch term)
-on the sample data.
-
 
 Example output:
 
@@ -399,25 +325,22 @@ Shakespeare match query on speaker LEONATO has the expected numbers of hits
 The web-based UI is equivalent to the **validate.sh** script. It queries
 Elasticsearch through the Pyrios proxy and verifies that all the data looks
 correct.
-
 The web-based UI also demonstrates usage of Stackdriver Tracing and custom
 Stackdriver metrics. You can view the UI by running
+
 
 ```console
 make expose-ui
 ```
 
-You will need to have port 8080 available on your machine before running
-`make expose-ui`. In your browser visit
-[localhost:8080](http://localhost:8080). Each
-time the UI page is refreshed it creates traces and metrics.
+Click the button `web preview` and set the port to `8080`.  A new tab will open showing the UI.
+Each time the UI page is refreshed it creates traces and metrics.
 
 The custom metric is called `custom/pyrios-ui/numberOfLeonatoHits` and can
 be found in the global resource.
 
 There is a trace of `pyrios-ui`, which indicates the UI being loaded and making numerous calls
 to pyrios.
-
 
 ## Teardown
 
@@ -430,8 +353,12 @@ It will run the following commands:
 3. terraform destroy - it prompts you for a shared secret for VPN and
    then destroys the all the project infrastructure
 
-In order to teardown, run `make
-teardown`.
+In order to teardown, run
+
+```console
+make teardown
+```
+
 
 You should see output similar to this:
 ```
@@ -468,19 +395,7 @@ service "elasticsearch-discovery" deleted
     ```console
     gcloud auth application-default login
     ```
-
-2. `make create` image publication error:
-
-   ```console
-   CRITICAL:root:Error publishing provided image: Bad status during token exchange: 401
-   ```
-   Provide credentials for docker to [push image](https://cloud.google.com/container-registry/docs/pushing-and-pulling).  This boils down:
-
-   ```console
-   gcloud auth configure-docker
-   ```
-
-3. `make expose-ui` is not working:
+2. `make expose-ui` is not working:
 
     Make sure that port 8080 is not being used by another process on your
     machine. It's a very common port for development servers, etc.
